@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+  <script src="myperceptron.js"></script>
   <style>
     button {
       padding: 10px 20px;
@@ -12,12 +14,16 @@
       border-radius: 4px;
       cursor: pointer;
     }
+
     #deleteBtn {
-      background-color: #f44336; /* Warna merah untuk tombol hapus */
+      background-color: #f44336;
+      /* Warna merah untuk tombol hapus */
     }
+
     button:hover {
       opacity: 0.8;
     }
+
     #status {
       margin: 10px 0;
       font-weight: bold;
@@ -26,202 +32,168 @@
 </head>
 
 <body>
-<div id="myPlot" style="width:100%;max-width:400px;border:1px solid black"></div>
-<button id="trainBtn">Train Model</button>
-<button id="deleteBtn">Hapus Model</button>
-<div id="status">Model not trained</div>
+  <div id="myPlot" style="width:100%;max-width:400px;border:1px solid black"></div>
+  <button id="trainBtn">Train Model</button>
+  <button id="deleteBtn">Hapus Model</button>
+  <div id="status">Model not trained</div>
 
-<script>
-// Initiate Values
-const numPoints = 1000;
-const learningRate = 0.00001;
+  <script>
+    // Initiate Values
+    const numPoints = 1000;
+    const learningRate = 0.00001;
 
-// DOM Elements
-const trainBtn = document.getElementById('trainBtn');
-const statusDiv = document.getElementById('status');
-const deleteBtn = document.getElementById('deleteBtn');
+    // DOM Elements
+    const trainBtn = document.getElementById('trainBtn');
+    const statusDiv = document.getElementById('status');
+    const deleteBtn = document.getElementById('deleteBtn');
 
-// Fungsi untuk menghapus model
-function deleteModel() {
-  localStorage.removeItem('perceptronModel'); // Hapus dari localStorage
-  ptron = new Perceptron(2, learningRate); // Buat model baru
-  statusDiv.textContent = "Model dihapus! Mulai dengan model baru.";
-  updatePlot();
-}
-
-// Event listener untuk tombol hapus
-deleteBtn.addEventListener('click', deleteModel);
-
-// Prepare Plotly data
-const traceLine = {
-  x: [],
-  y: [],
-  mode: 'lines',
-  line: {color: 'black'},
-  name: 'Decision boundary'
-};
-
-const tracePoints = {
-  x: [],
-  y: [],
-  mode: 'markers',
-  marker: {color: []},
-  name: 'Points'
-};
-
-// Create Random XY Points
-const xPoints = [];
-const yPoints = [];
-for (let i = 0; i < numPoints; i++) {
-  xPoints[i] = Math.random() * 10;
-  yPoints[i] = Math.random() * 10;
-}
-
-// Line Function
-function f(x) {
-  return x * 1.2 + 5;
-}
-
-// Compute Desired Answers
-const desired = [];
-for (let i = 0; i < numPoints; i++) {
-  desired[i] = 0;
-  if (yPoints[i] > f(xPoints[i])) {desired[i] = 1}
-}
-
-// Initialize Perceptron
-let ptron = null;
-
-// Check for saved model
-function loadModel() {
-  const savedModel = localStorage.getItem('perceptronModel');
-  console.log("Saved Model:", savedModel);
-  console.log("SUM weights:", savedModel ? JSON.parse(savedModel).weights.reduce((a, b) => a + b, 0) : "No model found");
-  if (savedModel) {
-    const modelData = JSON.parse(savedModel);
-    ptron = new Perceptron(2, learningRate);
-    ptron.weights = modelData.weights;
-    ptron.bias = modelData.bias;
-    statusDiv.textContent = "Loaded trained model from storage";
-    updatePlot();
-    return true;
-  }
-  return false;
-}
-
-// Train the model
-function trainModel() {
-  if (!ptron) {
-    ptron = new Perceptron(2, learningRate);
-  }
-  
-  statusDiv.textContent = "Training in progress...";
-  trainBtn.disabled = true;
-  
-  // Use setTimeout to allow UI to update
-  setTimeout(() => {
-    for (let j = 0; j <= 10000; j++) {
-      for (let i = 0; i < numPoints; i++) {
-        ptron.train([xPoints[i], yPoints[i]], desired[i]);
-      }
+    // Fungsi untuk menghapus model
+    function deleteModel() {
+      localStorage.removeItem('perceptronModel'); // Hapus dari localStorage
+      ptron = new Perceptron(2, learningRate); // Buat model baru
+      statusDiv.textContent = "Model dihapus! Mulai dengan model baru.";
+      updatePlot();
     }
-    
-    // Save the trained model
-    const modelData = {
-      weights: ptron.weights,
-      bias: ptron.bias
+
+    // Event listener untuk tombol hapus
+    deleteBtn.addEventListener('click', deleteModel);
+
+    // Prepare Plotly data
+    const traceLine = {
+      x: [],
+      y: [],
+      mode: 'lines',
+      line: { color: 'black' },
+      name: 'Decision boundary'
     };
-    localStorage.setItem('perceptronModel', JSON.stringify(modelData));
-    
-    statusDiv.textContent = "Model trained and saved!";
-    trainBtn.disabled = false;
-    updatePlot();
-  }, 100);
-}
 
-// Update the plot with current model
-function updatePlot() {
-  // Prepare line points
-  const lineX = [0, 10];
-  const lineY = [f(0), f(10)];
-  traceLine.x = lineX;
-  traceLine.y = lineY;
+    const tracePoints = {
+      x: [],
+      y: [],
+      mode: 'markers',
+      marker: { color: [] },
+      name: 'Points'
+    };
 
-  // Clear previous points
-  tracePoints.x = [];
-  tracePoints.y = [];
-  tracePoints.marker.color = [];
-
-  // Classify and plot points
-  for (let i = 0; i < numPoints; i++) {
-    const x = xPoints[i];
-    const y = yPoints[i];
-    let guess = ptron.activate([x, y, ptron.bias]);
-    let color = "black";
-    if (guess == 0) color = "blue";
-    
-    tracePoints.x.push(x);
-    tracePoints.y.push(y);
-    tracePoints.marker.color.push(color);
-  }
-
-  // Update the plot
-  Plotly.newPlot('myPlot', [traceLine, tracePoints], {
-    title: 'Perceptron Classification',
-    xaxis: {range: [0, 10]},
-    yaxis: {range: [0, 10]},
-    width: 400,
-    height: 400
-  });
-}
-
-// Event listener for train button
-trainBtn.addEventListener('click', trainModel);
-
-// Try to load saved model on startup
-if (!loadModel()) {
-  ptron = new Perceptron(2, learningRate);
-}
-
-// Initial plot with untrained model
-updatePlot();
-
-console.log(`Persamaan garis: y = ${-(ptron.weights[0]/ptron.weights[1]).toFixed(3)}x + ${-(ptron.weights[2]/ptron.weights[1]).toFixed(3)}`);
-
-// Perceptron Object ---------------------
-function Perceptron(no, learningRate = 0.00001) {
-  // Set Initial Values
-  this.learnc = learningRate;
-  this.bias = 1;
-
-  // Compute Random Weights
-  this.weights = [];
-  for (let i = 0; i <= no; i++) {
-    this.weights[i] = Math.random() * 2 - 1;
-  }
-
-  // Activate Function
-  this.activate = function(inputs) {
-    let sum = 0;
-    for (let i = 0; i < inputs.length; i++) {
-      sum += inputs[i] * this.weights[i];
-    } 
-    if (sum > 0) {return 1} else {return 0}
-  }
-
-  // Train Function
-  this.train = function(inputs, desired) {
-    inputs.push(this.bias);
-    let guess = this.activate(inputs);
-    let error = desired - guess;
-    if (error != 0) {
-      for (let i = 0; i < inputs.length; i++) {
-        this.weights[i] += this.learnc * error * inputs[i];         
-      }
+    // Create Random XY Points
+    const xPoints = [];
+    const yPoints = [];
+    for (let i = 0; i < numPoints; i++) {
+      xPoints[i] = Math.random() * 10;
+      yPoints[i] = Math.random() * 10;
     }
-  }
-}
-// End Perceptron Object
-</script>
+
+    // Line Function
+    function f(x) {
+      return x * 1.2 + 5;
+    }
+
+    // Compute Desired Answers
+    const desired = [];
+    for (let i = 0; i < numPoints; i++) {
+      desired[i] = 0;
+      if (yPoints[i] > f(xPoints[i])) { desired[i] = 1 }
+    }
+
+    // Initialize Perceptron
+    let ptron = null;
+
+    // Check for saved model
+    function loadModel() {
+      const savedModel = localStorage.getItem('perceptronModel');
+      console.log("Saved Model:", savedModel);
+      console.log("SUM weights:", savedModel ? JSON.parse(savedModel).weights.reduce((a, b) => a + b, 0) : "No model found");
+      if (savedModel) {
+        const modelData = JSON.parse(savedModel);
+        ptron = new Perceptron(2, learningRate);
+        ptron.weights = modelData.weights;
+        ptron.bias = modelData.bias;
+        statusDiv.textContent = "Loaded trained model from storage";
+        updatePlot();
+        return true;
+      }
+      return false;
+    }
+
+    // Train the model
+    function trainModel() {
+      if (!ptron) {
+        ptron = new Perceptron(2, learningRate);
+      }
+
+      statusDiv.textContent = "Training in progress...";
+      trainBtn.disabled = true;
+
+      // Use setTimeout to allow UI to update
+      setTimeout(() => {
+        for (let j = 0; j <= 10000; j++) {
+          for (let i = 0; i < numPoints; i++) {
+            ptron.train([xPoints[i], yPoints[i]], desired[i]);
+          }
+        }
+
+        // Save the trained model
+        const modelData = {
+          weights: ptron.weights,
+          bias: ptron.bias
+        };
+        localStorage.setItem('perceptronModel', JSON.stringify(modelData));
+
+        statusDiv.textContent = "Model trained and saved!";
+        trainBtn.disabled = false;
+        updatePlot();
+      }, 100);
+    }
+
+    // Update the plot with current model
+    function updatePlot() {
+      // Prepare line points
+      const lineX = [0, 10];
+      const lineY = [f(0), f(10)];
+      traceLine.x = lineX;
+      traceLine.y = lineY;
+
+      // Clear previous points
+      tracePoints.x = [];
+      tracePoints.y = [];
+      tracePoints.marker.color = [];
+
+      // Classify and plot points
+      for (let i = 0; i < numPoints; i++) {
+        const x = xPoints[i];
+        const y = yPoints[i];
+        let guess = ptron.activate([x, y, ptron.bias]);
+        let color = "black";
+        if (guess == 0) color = "blue";
+
+        tracePoints.x.push(x);
+        tracePoints.y.push(y);
+        tracePoints.marker.color.push(color);
+      }
+
+      // Update the plot
+      Plotly.newPlot('myPlot', [traceLine, tracePoints], {
+        title: 'Perceptron Classification',
+        xaxis: { range: [0, 10] },
+        yaxis: { range: [0, 10] },
+        width: 400,
+        height: 400
+      });
+    }
+
+    // Event listener for train button
+    trainBtn.addEventListener('click', trainModel);
+
+    // Try to load saved model on startup
+    if (!loadModel()) {
+      ptron = new Perceptron(2, learningRate);
+    }
+
+    // Initial plot with untrained model
+    updatePlot();
+
+    console.log(`Persamaan garis: y = ${-(ptron.weights[0] / ptron.weights[1]).toFixed(3)}x + ${-(ptron.weights[2] / ptron.weights[1]).toFixed(3)}`);
+  </script>
 </body>
+
 </html>
